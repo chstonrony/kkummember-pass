@@ -1,0 +1,5 @@
+/*
+  Cache-Control: no-cache
+  Permissions-Policy: camera=(self)
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer

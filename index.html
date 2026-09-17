@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="꿈멤버 PASS">
+<meta name="theme-color" content="#FFF8EF">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>꿈멤버 PASS · 출석 체크</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://unpkg.com/jsqr@1.4.0/dist/jsQR.js';document.head.appendChild(s);"></script>
+<style>
+  :root{--bg:#FAF8F4;--card:#fff;--ink:#211E1B;--ink2:#5B554D;--muted:#9A938A;--line:#ECE7DF;
+    --line2:#E2DCD2;--soft:#F4F1EB;--pink:#D96E92;--green:#5FA34E;--coral:#E8936D;}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+  body{font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:var(--bg);
+    color:var(--ink);line-height:1.4;letter-spacing:-0.01em;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .top{position:sticky;top:0;z-index:20;background:rgba(250,248,244,.92);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-items:center;gap:12px}
+  .top img{width:34px;height:34px;border-radius:10px;object-fit:cover}
+  .top b{font-size:19px;font-weight:800;letter-spacing:-0.02em}
+  .top .date{font-size:13px;color:var(--muted)}
+  .top .sp{flex:1}
+  .launch-warning{display:none;background:#241D32;color:#fff;padding:12px 18px;text-align:center;font-size:14px;font-weight:800}
+  .launch-warning.on{display:block}.launch-warning b{color:#FFD95A}
+  .stat{background:var(--soft);border-radius:999px;padding:8px 16px;font-size:14px;font-weight:700}
+  .stat b{color:var(--pink);font-size:16px}
+  .btn{border:1px solid var(--line2);background:#fff;border-radius:999px;padding:9px 15px;font-size:13.5px;
+    font-weight:700;color:var(--ink);cursor:pointer;font-family:inherit;transition:.15s}
+  .btn:hover{background:var(--soft)}.btn:active{transform:scale(.96)}
+  .btn.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .wrap{max-width:1100px;margin:0 auto;padding:22px 18px 80px}
+  .hero{text-align:center;padding:18px 0 8px}
+  .hero h1{font-size:30px;font-weight:800;letter-spacing:-0.03em}
+  .hero p{font-size:16px;color:var(--ink2);margin-top:8px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;margin-top:22px}
+  .kid{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px 12px;text-align:center;
+    cursor:pointer;transition:.15s;position:relative}
+  .kid:hover{border-color:var(--ink2);transform:translateY(-2px)}.kid:active{transform:scale(.96)}
+  .kid .face{width:84px;height:84px;border-radius:50%;margin:0 auto 10px;display:grid;place-items:center;overflow:hidden}
+  .kid .face svg{width:50px;height:50px}
+  .kid .nm{font-size:17px;font-weight:800;letter-spacing:-0.02em}
+  .kid .gr{font-size:12px;color:var(--muted);margin-top:2px}
+  .kid .score{display:inline-block;margin-top:9px;padding:5px 11px;border:2px solid var(--ink);border-radius:999px;background:#fff;font-size:13px;font-weight:850;color:var(--pink);box-shadow:2px 2px 0 var(--ink)}
+  .kid.done{opacity:.55}
+  .kid .check{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:var(--green);
+    display:none;place-items:center}
+  .kid.done .check{display:grid}
+  .kid .check svg{width:15px;height:15px}
+  .empty{text-align:center;color:var(--muted);padding:50px 10px;font-size:15px;line-height:1.7}
+  /* camera */
+  #cam{display:none;text-align:center;margin-top:18px}
+  #cam.on{display:block}
+  #cam video{width:100%;max-width:480px;border-radius:18px;background:#000;aspect-ratio:1;display:block;margin:0 auto;transition:box-shadow .12s}
+  #camwrap{position:relative;max-width:480px;margin:0 auto}
+  #reticle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:66%;aspect-ratio:1;
+    border:4px dashed rgba(124,217,106,.95);border-radius:24px;pointer-events:none;animation:retpulse 1.3s ease-in-out infinite}
+  @keyframes retpulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.85}50%{transform:translate(-50%,-50%) scale(1.06);opacity:1}}
+  #camwrap.hit video{box-shadow:0 0 0 6px #5FA34E,0 0 44px 8px rgba(95,163,78,.75)}
+  #camwrap.hit #reticle{border-style:solid;border-color:#7CD96A}
+  #cam .hint{font-size:15px;color:var(--ink);font-weight:700;margin-top:12px}
+  /* celebration */
+  #cel{position:fixed;inset:0;z-index:60;display:none;place-items:center;
+    background:radial-gradient(circle at 50% 38%, rgba(255,255,255,.97), rgba(250,244,238,.97))}
+  #cel.on{display:grid}
+  #confetti{position:absolute;inset:0;pointer-events:none}
+  .celbox{position:relative;text-align:center;animation:pop .5s cubic-bezier(.2,1.3,.4,1)}
+  @keyframes pop{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+  .celmascot{width:170px;height:170px;border-radius:50%;margin:0 auto 6px;display:grid;place-items:center;
+    animation:bounce 1s ease infinite}
+  .celmascot svg{width:104px;height:104px}
+  .celmascot img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+  .kid .face img{width:100%;height:100%;object-fit:cover}
+  .mthumb{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;overflow:hidden;flex:none;margin-right:8px;vertical-align:middle}
+  .mthumb img{width:100%;height:100%;object-fit:cover}
+  .mthumb svg{width:24px;height:24px}
+  .mphoto{cursor:pointer;color:var(--accent);font-weight:700;font-size:13px;padding:4px 8px;white-space:nowrap}
+  .mrow{flex-wrap:wrap}
+  .mrow .minfo{flex:1;min-width:0;color:var(--muted);font-size:13px}
+  .mrew{flex-basis:100%;display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+  .mrew button{border:1px solid var(--line2);background:#fff;border-radius:999px;padding:5px 10px;font-size:12.5px;font-weight:700;color:var(--ink);cursor:pointer}
+  .mrew button:hover{background:var(--soft)}.mrew button:active{transform:scale(.96)}
+  .reason-list{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+  .reason-option{display:flex;align-items:center;gap:8px;border:2px solid var(--line2);border-radius:14px;padding:10px;cursor:pointer;font-size:14px;font-weight:750}
+  .reason-option:has(input:checked){border-color:var(--pink);background:#fff0f5}
+  .reason-option input{flex:0 0 auto;min-width:0;width:17px;height:17px;accent-color:var(--pink)}
+  .reward-fields{display:grid;grid-template-columns:120px 1fr;gap:10px;margin-top:10px}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+  .celname{font-size:34px;font-weight:800;letter-spacing:-0.03em}
+  .celtitle{font-size:46px;font-weight:800;letter-spacing:-0.04em;margin:2px 0 6px}
+  .xpbadge{display:inline-block;background:var(--pink);color:#fff;font-size:30px;font-weight:800;
+    padding:8px 26px;border-radius:999px;animation:xppop .6s .2s both cubic-bezier(.2,1.4,.4,1)}
+  @keyframes xppop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+  .celsub{font-size:17px;color:var(--ink2);margin-top:16px}
+  .celgrade{margin-top:14px;font-size:15px;color:var(--muted)}
+  .pbar{height:14px;width:280px;max-width:80vw;border-radius:999px;background:#EDE8E0;overflow:hidden;margin:8px auto 0}
+  .pfill{height:100%;border-radius:999px;width:0;transition:width 1s .4s cubic-bezier(.2,.8,.2,1)}
+  .celbtn{margin-top:24px;border:0;background:var(--ink);color:#fff;font-weight:700;font-size:18px;
+    padding:13px 40px;border-radius:999px;cursor:pointer;font-family:inherit}
+  /* grade-up ribbon */
+  .levelup{display:inline-block;background:#FBE9A6;color:#9A6E12;font-weight:800;font-size:15px;
+    padding:6px 16px;border-radius:999px;margin-bottom:10px;animation:xppop .5s .3s both}
+  /* toast */
+  #toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(90px);background:var(--ink);
+    color:#fff;padding:14px 22px;border-radius:999px;font-weight:700;font-size:16px;opacity:0;transition:.3s;z-index:70}
+  #toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  /* modal (manage) */
+  .modal{position:fixed;inset:0;background:rgba(33,30,27,.5);display:none;place-items:center;z-index:50;padding:20px;backdrop-filter:blur(3px)}
+  .modal.on{display:grid}
+  .mbox{background:#fff;border-radius:24px;padding:24px;max-width:460px;width:100%;max-height:85vh;overflow:auto}
+  .mbox h2{font-size:20px;font-weight:800;margin-bottom:14px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  input{font-family:inherit;font-size:15px;border:1px solid var(--line2);border-radius:12px;padding:11px 13px;flex:1;min-width:110px}
+  .mlist{margin-top:8px}
+  .mrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+  .mrow .x{margin-left:auto;color:var(--muted);cursor:pointer;font-weight:700}
+  .foot{text-align:center;font-size:12px;color:var(--muted);margin-top:10px}
+  /* 2026 DREAM LAND — pop-up club kiosk */
+  :root{--bg:#FFF8EF;--card:#FFFEFA;--ink:#241D32;--ink2:#665D70;--muted:#978E9B;
+    --line:#DED2C5;--line2:#CFC0B3;--soft:#F6EEDF;--pink:#E74E87;--green:#5CAD8B;--coral:#F08D68;--butter:#FFD95A;--lilac:#B7A4E8}
+  body{background:radial-gradient(circle at 8% 10%,rgba(255,217,90,.3) 0 8%,transparent 8.4%),radial-gradient(circle at 92% 22%,rgba(183,164,232,.22) 0 10%,transparent 10.4%),#FFF8EF}
+  body:before{content:"";position:fixed;inset:0;z-index:-1;opacity:.18;background-image:radial-gradient(#6D5C69 .7px,transparent .7px);background-size:14px 14px}
+  .top{background:rgba(255,248,239,.92);border-bottom:2px solid var(--ink);padding:13px max(20px,calc((100vw - 1180px)/2))}
+  .top img{width:44px;height:44px;border-radius:50%;border:2px solid var(--ink);transform:rotate(-4deg)}.top b{font-size:22px;letter-spacing:-.05em}.top b:after{content:" SUNDAY CLUB";display:block;font:700 8px Georgia,serif;letter-spacing:.16em;color:var(--pink)}
+  .stat,.btn{border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}.stat{background:var(--butter)}.btn:hover{background:#fff;transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--ink)}
+  .hero{position:relative;overflow:hidden;background:var(--butter);border:2px solid var(--ink);border-radius:40px 40px 22px 40px;padding:34px 24px 30px;margin-top:14px;box-shadow:8px 8px 0 var(--ink)}
+  .hero:before{content:"WORSHIP WITH JOY";position:absolute;right:-8px;top:5px;font:900 68px/1 Georgia,serif;color:rgba(36,29,50,.07);transform:rotate(-4deg)}
+  .hero:after{content:"✦";position:absolute;right:38px;bottom:15px;font-size:58px;color:var(--pink);transform:rotate(12deg)}
+  .hero h1{font-size:clamp(34px,5vw,56px);line-height:1.03;letter-spacing:-.06em}.hero p{font-size:17px;font-weight:650}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(162px,1fr));gap:20px;margin-top:32px}
+  .kid{border:2px solid var(--ink);border-radius:28px 28px 17px 28px;box-shadow:5px 5px 0 var(--ink);padding:20px 12px;background:#fff}
+  .kid:nth-child(4n+1){background:#FFF3BE;transform:rotate(-.6deg)}.kid:nth-child(4n+2){background:#FBE1EB;transform:rotate(.45deg)}.kid:nth-child(4n+3){background:#E2F4EC;transform:rotate(-.35deg)}.kid:nth-child(4n){background:#EAE4FA;transform:rotate(.6deg)}
+  .kid:hover{border-color:var(--ink);transform:translate(-2px,-4px) rotate(0);box-shadow:9px 9px 0 var(--ink)}
+  .kid .face{width:96px;height:96px;border:2px solid var(--ink);box-shadow:4px 4px 0 var(--ink);border-radius:49% 51% 44% 56%;transform:rotate(-2deg)}
+  .kid .nm{font-size:20px;letter-spacing:-.045em;margin-top:4px}.kid.done{opacity:.48;filter:saturate(.45)}.kid .check{border:2px solid var(--ink);width:32px;height:32px}
+  #cam video{border:3px solid var(--ink);box-shadow:7px 7px 0 var(--ink);border-radius:30px}
+  #cel{background:radial-gradient(circle at 50% 32%,#FFF5BB 0 22%,#FBE4EC 22.5% 47%,#E6F4EE 47.5% 70%,#E9E2FA 70.5%)}
+  .celbox{background:#fff;border:3px solid var(--ink);box-shadow:12px 12px 0 var(--ink);border-radius:48px 48px 28px 48px;padding:34px 50px 38px;min-width:min(520px,88vw)}
+  .celmascot{border:3px solid var(--ink);box-shadow:7px 7px 0 var(--ink);border-radius:48% 52% 44% 56%}.celname{font-size:39px}.celtitle{font-size:clamp(48px,7vw,72px);color:var(--pink)}
+  .xpbadge{border:3px solid var(--ink);box-shadow:5px 5px 0 var(--ink);background:var(--butter);color:var(--ink);transform:rotate(-2deg)}
+  .pbar{border:2px solid var(--ink);background:#fff;height:17px}.celbtn{border:2px solid var(--ink);box-shadow:4px 4px 0 var(--pink)}
+  .mbox{border:2px solid var(--ink);box-shadow:8px 8px 0 var(--ink);border-radius:34px 34px 20px 34px}
+  @media(max-width:700px){.top .date,.stat{display:none}.top{padding:10px 12px}.btn{padding:8px 10px;box-shadow:2px 2px 0 var(--ink)}.hero{padding:28px 18px}.hero:after{font-size:36px}.grid{grid-template-columns:repeat(2,1fr);gap:14px}.kid{padding:16px 8px}.kid .face{width:76px;height:76px}.celbox{padding:28px 20px}.celtitle{font-size:42px}}
+  /* ---- 연결판 추가 ---- */
+  .logo{width:44px;height:44px;border-radius:50%;border:2px solid var(--ink);transform:rotate(-4deg);display:grid;place-items:center;background:var(--butter);font-weight:900;font-size:19px;flex:none}
+  .top .church{font-size:12px;color:var(--ink2);font-weight:700}
+  .top b:after{content:none}
+  #prog:after{content:" SUNDAY CLUB";display:block;font:700 8px Georgia,serif;letter-spacing:.16em;color:var(--pink)}
+  @media(max-width:700px){#prog{font-size:17px}.top .church{display:none}.btn .lbl{display:none}}
+  .net{display:inline-block;width:10px;height:10px;border-radius:50%;background:#5CAD8B;border:2px solid var(--ink);margin-left:6px;vertical-align:middle}
+  .net.bad{background:#E74E87}.net.wait{background:#FFD95A}
+  #gate{position:fixed;inset:0;z-index:80;background:var(--bg);display:none;place-items:center;padding:18px;overflow:auto}
+  #gate.on{display:grid}
+  .gbox{background:#fff;border:3px solid var(--ink);box-shadow:10px 10px 0 var(--ink);border-radius:40px 40px 24px 40px;padding:30px 28px;width:min(440px,100%);text-align:center}
+  .gbox h2{font-size:26px;font-weight:900;letter-spacing:-.04em}
+  .gbox p{color:var(--ink2);font-size:14.5px;margin:8px 0 14px;line-height:1.6}
+  .gbox input{width:100%;text-align:center;user-select:text}
+  .gbox .churchname{display:inline-block;background:var(--butter);border:2px solid var(--ink);border-radius:999px;padding:5px 14px;font-weight:800;margin-bottom:6px}
+  .dots{display:flex;justify-content:center;gap:12px;margin:12px 0 16px}
+  .dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--ink);background:#fff}
+  .dots i.on{background:var(--pink)}
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:300px;margin:0 auto}
+  .pad button{font:800 24px 'Pretendard',sans-serif;padding:14px 0;border:2px solid var(--ink);border-radius:18px;background:#fff;box-shadow:3px 3px 0 var(--ink);cursor:pointer;color:var(--ink)}
+  .pad button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+  .gerr{color:var(--pink);font-weight:800;min-height:22px;margin-top:10px;font-size:14px}
+  .link{background:none;border:0;color:var(--ink2);text-decoration:underline;font:600 13px 'Pretendard',sans-serif;cursor:pointer;margin-top:14px}
+  .welcome{display:none;margin:14px auto 0;max-width:420px;background:#E2F4EC;border:2px solid var(--ink);border-radius:18px;padding:12px 14px;font-weight:750;font-size:15px}
+  .welcome.on{display:block}
+  .welcome button{margin-top:8px}
+  .tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+  .tabs button{border:2px solid var(--ink);background:#fff;border-radius:999px;padding:6px 12px;font:750 13px 'Pretendard',sans-serif;cursor:pointer}
+  .tabs button.on{background:var(--ink);color:#fff}
+  .logrow{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .logrow .t{color:var(--muted);width:44px;flex:none}.logrow .p{margin-left:auto;font-weight:800;color:var(--pink)}
+  .logrow.x{opacity:.45;text-decoration:line-through}
+  .logrow button{border:1px solid var(--line2);background:#fff;border-radius:999px;padding:4px 9px;font:700 12px 'Pretendard',sans-serif;cursor:pointer}
+  .logrow button.arm{background:var(--pink);color:#fff;border-color:var(--pink)}
+</style>
+</head>
+<body>
+<div class="launch-warning" id="launchWarning">이 주소에서는 카메라를 쓸 수 없어요. <b>https 주소</b>나 <b>출석키오스크_실행</b> 파일로 열어 주세요. (얼굴 누르기 출석은 됩니다)</div>
+<div class="top">
+  <div class="logo" id="logo">꿈</div>
+  <div><b id="prog">꿈멤버 PASS</b><div class="church"><span id="church"></span> · <span id="today"></span><span class="net wait" id="net" title="연결 상태"></span></div></div>
+  <span class="sp"></span>
+  <div class="stat">오늘 출석 <b id="cnt">0</b>명</div>
+  <button class="btn" onclick="loadState(true)" title="새로고침">↻<span class="lbl"> 새로고침</span></button>
+  <button class="btn" id="cambtn" title="카메라 스캔">📷<span class="lbl"> 카메라 스캔</span></button>
+  <button class="btn" onclick="openManage()" title="관리">⚙<span class="lbl"> 관리</span></button>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <h1 id="heroTitle">기쁨으로 예배드려요! ✦</h1>
+    <p>“기쁨으로 여호와를 섬기며” · 시편 100:2<br>내 얼굴을 누르거나 카드 QR을 보여주세요</p>
+  </div>
+  <div id="cam"><div id="camwrap"><video id="video" playsinline muted></video><div id="reticle"></div></div><div class="hint" id="camhint">📷 QR을 초록 네모 칸 안에 가까이 보여주세요!</div></div>
+  <div class="grid" id="grid"><div class="empty">연결하는 중이에요…</div></div>
+</div>
+
+<!-- 연결 · PIN -->
+<div id="gate"><div class="gbox">
+  <div id="stepUrl">
+    <h2>교회 출석부 연결</h2>
+    <p>교회 스프레드시트 메뉴 <b>꿈멤버 → 웹앱 주소 보기</b>에 나온 주소를 붙여 넣어 주세요. 이 기기에만 저장됩니다.</p>
+    <input id="urlIn" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false">
+    <div class="gerr" id="urlErr"></div>
+    <button class="btn dark" style="margin-top:6px" onclick="connectUrl()">연결 확인</button>
+  </div>
+  <div id="stepPin" style="display:none">
+    <div class="churchname" id="gateChurch"></div>
+    <h2>선생님 PIN</h2>
+    <div class="dots" id="dots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="pad" id="pad"></div>
+    <div class="gerr" id="pinErr"></div>
+    <button class="link" id="changeUrl" onclick="showUrlStep()">다른 교회 주소로 바꾸기</button>
+  </div>
+</div></div>
+
+<!-- celebration -->
+<div id="cel">
+  <canvas id="confetti"></canvas>
+  <div class="celbox">
+    <div id="lvlup"></div>
+    <div class="celmascot" id="celmascot"></div>
+    <div class="celname" id="celname"></div>
+    <div class="celtitle" id="celtitle">예배하러 왔어요! 🎉</div>
+    <div class="xpbadge" id="celxp">+10</div>
+    <div class="celgrade" id="celgrade"></div>
+    <div class="pbar"><div class="pfill" id="celfill"></div></div>
+    <div class="celsub" id="celsub"></div>
+    <div class="welcome" id="celwelcome"></div>
+    <button class="celbtn" onclick="closeCel()">고마워요!</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- manage -->
+<div class="modal" id="manage"><div class="mbox">
+  <h2>선생님 관리</h2>
+  <div class="tabs">
+    <button class="on" data-tab="kids" onclick="tab('kids')">아이 · 점수</button>
+    <button data-tab="log" onclick="tab('log')">오늘 기록</button>
+    <button data-tab="add" onclick="tab('add')">새 친구</button>
+    <button data-tab="dev" onclick="tab('dev')">연결</button>
+  </div>
+  <div id="tab-kids"><div class="mlist" id="mlist"></div></div>
+  <div id="tab-log" style="display:none"><div class="foot" style="text-align:left">잘못 누른 기록은 <b>취소</b>를 두 번 눌러 되돌려요. 오늘 기록만 취소할 수 있어요.</div><div id="loglist"></div></div>
+  <div id="tab-add" style="display:none">
+    <div class="foot" style="text-align:left">처음 온 친구를 바로 등록해요. 보호자 연락처 등은 교회 스프레드시트에서만 관리해 주세요.</div>
+    <div class="row" style="margin-top:10px"><input id="m-name" placeholder="이름" maxlength="20"><input id="m-cls" placeholder="반 (선택)" maxlength="20"></div>
+    <button class="btn dark" onclick="addKid()">등록하고 출석하기</button>
+  </div>
+  <div id="tab-dev" style="display:none">
+    <div class="foot" style="text-align:left;line-height:1.7" id="devinfo"></div>
+    <div class="row" style="margin-top:10px"><button class="btn" onclick="lockNow()">PIN 잠그기</button><button class="btn" onclick="forget()">이 기기 연결 해제</button></div>
+  </div>
+  <div class="row" style="justify-content:center;margin-top:14px"><button class="btn" onclick="closeModal('manage')">닫기</button></div>
+</div></div>
+
+<div class="modal" id="rewardModal"><div class="mbox">
+  <h2 id="rewardTitle">칭찬 점수</h2>
+  <div class="foot" style="text-align:left">점수를 주는 이유를 하나 선택해 주세요.</div>
+  <div class="reason-list" id="reasonList"></div>
+  <div class="reward-fields">
+    <input id="rewardXp" type="number" min="1" max="100" step="1" placeholder="점수">
+    <input id="rewardNote" placeholder="이유 (특별 칭찬은 꼭 적어요)" maxlength="80">
+  </div>
+  <div class="row" style="justify-content:center;margin-top:16px">
+    <button class="btn" onclick="closeModal('rewardModal')">취소</button>
+    <button class="btn dark" onclick="saveReward()">점수 적립</button>
+  </div>
+</div></div>
+
+<script>
+const ICON={
+ lamb:'<svg viewBox="0 0 48 48"><ellipse cx="14" cy="27" rx="3.1" ry="4.8" fill="#E8936D"/><ellipse cx="34" cy="27" rx="3.1" ry="4.8" fill="#E8936D"/><circle cx="16" cy="17" r="6.4" fill="#fff"/><circle cx="24" cy="13" r="6.6" fill="#fff"/><circle cx="32" cy="17" r="6.4" fill="#fff"/><circle cx="13" cy="25" r="5.8" fill="#fff"/><circle cx="35" cy="25" r="5.8" fill="#fff"/><circle cx="24" cy="26" r="11.4" fill="#fff"/><circle cx="24" cy="16.5" r="4.4" fill="#fff"/><circle cx="20" cy="25" r="1.7" fill="#4B3F3A"/><circle cx="28" cy="25" r="1.7" fill="#4B3F3A"/><circle cx="17.6" cy="29" r="2" fill="#F7B7AE"/><circle cx="30.4" cy="29" r="2" fill="#F7B7AE"/><path d="M21.6 29.4 Q24 31.8 26.4 29.4" stroke="#4B3F3A" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>',
+ light:'<svg viewBox="0 0 48 48"><g stroke="#E0A52A" stroke-width="2.3" stroke-linecap="round"><line x1="24" y1="5" x2="24" y2="9.5"/><line x1="24" y1="38.5" x2="24" y2="43"/><line x1="5" y1="24" x2="9.5" y2="24"/><line x1="38.5" y1="24" x2="43" y2="24"/><line x1="11" y1="11" x2="14.2" y2="14.2"/><line x1="33.8" y1="33.8" x2="37" y2="37"/><line x1="37" y1="11" x2="33.8" y2="14.2"/><line x1="14.2" y1="33.8" x2="11" y2="37"/></g><circle cx="24" cy="24" r="11" fill="#F6C638"/><circle cx="20" cy="23" r="1.7" fill="#7A5310"/><circle cx="28" cy="23" r="1.7" fill="#7A5310"/><circle cx="17.6" cy="27" r="2" fill="#EFA24E"/><circle cx="30.4" cy="27" r="2" fill="#EFA24E"/><path d="M21 27 Q24 30 27 27" stroke="#7A5310" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>',
+ faith:'<svg viewBox="0 0 48 48"><path d="M24 41 V25" stroke="#5FA34E" stroke-width="3" stroke-linecap="round"/><path d="M23 27 C14 27 11 18 19 16 C24 15 25 22 23 27Z" fill="#6BB05A"/><path d="M25 24 C34 24 37 15 29 13 C24 12 23 19 25 24Z" fill="#5FA34E"/><circle cx="24" cy="32" r="7.5" fill="#85C470"/><circle cx="21.3" cy="31" r="1.5" fill="#2F5E26"/><circle cx="26.7" cy="31" r="1.5" fill="#2F5E26"/><circle cx="18.8" cy="34" r="1.8" fill="#B6DDA1"/><circle cx="29.2" cy="34" r="1.8" fill="#B6DDA1"/><path d="M21.5 34 Q24 36.4 26.5 34" stroke="#2F5E26" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>',
+ love:'<svg viewBox="0 0 48 48"><path d="M24 41 C6 28 11 13 22 16 C23.3 16.4 24 17.6 24 18.6 C24 17.6 24.7 16.4 26 16 C37 13 42 28 24 41Z" fill="#E37AA0"/><circle cx="19.5" cy="26" r="1.8" fill="#fff"/><circle cx="28.5" cy="26" r="1.8" fill="#fff"/><circle cx="16" cy="29" r="2" fill="#F2A8C2"/><circle cx="32" cy="29" r="2" fill="#F2A8C2"/><path d="M20.5 30 Q24 33.4 27.5 30" stroke="#fff" stroke-width="1.7" fill="none" stroke-linecap="round"/></svg>',
+ hope:'<svg viewBox="0 0 48 48"><path d="M11 34 A13 13 0 0 1 37 34" fill="none" stroke="#E37AA0" stroke-width="2.5" stroke-linecap="round"/><path d="M14 34 A10 10 0 0 1 34 34" fill="none" stroke="#F6C638" stroke-width="2.5" stroke-linecap="round"/><path d="M17 34 A7 7 0 0 1 31 34" fill="none" stroke="#6BB05A" stroke-width="2.5" stroke-linecap="round"/><path d="M20 34 A4 4 0 0 1 28 34" fill="none" stroke="#5B9BD5" stroke-width="2.5" stroke-linecap="round"/><circle cx="15.5" cy="37" r="4.6" fill="#fff"/><circle cx="32.5" cy="37" r="4.6" fill="#fff"/><ellipse cx="24" cy="39" rx="11.5" ry="6.2" fill="#fff"/><circle cx="21" cy="38.4" r="1.55" fill="#4B3F3A"/><circle cx="27" cy="38.4" r="1.55" fill="#4B3F3A"/><circle cx="18.5" cy="40.6" r="1.6" fill="#F7B7AE"/><circle cx="29.5" cy="40.6" r="1.6" fill="#F7B7AE"/><path d="M22 41 Q24 43 26 41" stroke="#4B3F3A" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>',
+};
+const ICON_ORDER=['lamb','light','faith','hope','love'];
+const BOOT=null;
+const GAS=!!(BOOT&&window.google&&google.script&&google.script.run);   // 구글 웹앱 안에서 열린 경우
+const STORE=GAS?'kkummember.gas.v1':'kkummember.pass.v1';
+let CONF=loadConf();
+if(GAS){CONF.url='gas';CONF.church=BOOT.church;CONF.dept=BOOT.dept;CONF.program=BOOT.program;CONF.transport='gas';}            // {url, session, at, transport}
+let ST=null;                    // 서버 state
+let celBusy=false, busy=false;
+
+/* ---------- 저장 ---------- */
+function loadConf(){try{return JSON.parse(localStorage.getItem(STORE)||'{}')||{};}catch(_){return {};}}
+function saveConf(){try{localStorage.setItem(STORE,JSON.stringify(CONF));}catch(_){}}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function rid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+function cleanUrl(u){u=String(u||'').trim();const m=u.match(/^https:\/\/script\.google\.com\/(?:a\/[^/]+\/)?macros\/s\/[A-Za-z0-9_-]+\/(?:exec|dev)/);return m?m[0].replace(/\/dev$/,'/exec'):'';}
+
+/* ---------- 통신: POST(JSON) 우선, 막히면 JSONP ---------- */
+function net(state){const n=document.getElementById('net');n.className='net'+(state==='ok'?'':' '+state);}
+async function api(action,params,opt){
+  opt=opt||{};
+  const url=opt.url||CONF.url;
+  const body=Object.assign({action},params||{});
+  if(action!=='ping'&&action!=='login')body.session=CONF.session;
+  let res;
+  if(GAS){res=await gasCall(action,body);net('ok');
+    if(res&&res.auth){CONF.session='';saveConf();showPinStep();throw new Error(res.error||'다시 PIN을 입력해 주세요.');}
+    return res;}
+  try{
+    if(CONF.transport==='jsonp')throw new Error('jsonp');
+    const r=await withTimeout(fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow'}),20000);
+    res=await r.json();
+    if(CONF.transport!=='post'){CONF.transport='post';saveConf();}
+  }catch(e){
+    if(e&&e.timeout){net('bad');throw new Error('교회 출석부 응답이 늦어요. 잠시 뒤 다시 눌러 주세요.');}
+    res=await jsonp(url,body);
+    if(CONF.transport!=='jsonp'&&CONF.url){CONF.transport='jsonp';saveConf();}
+  }
+  net('ok');
+  if(res&&res.auth){CONF.session='';saveConf();showPinStep();throw new Error(res.error||'다시 PIN을 입력해 주세요.');}
+  return res;
+}
+const GAS_FN={
+  login:b=>['kmLogin',b.pin],
+  state:b=>['kmState',b.session],
+  record:b=>['kmRecord',b.session,{id:b.id,scan:b.scan,token:b.token,code:b.code,note:b.note,points:b.points,requestId:b.requestId,device:'kiosk'}],
+  undo:b=>['kmUndo',b.session,b.entryId],
+  cancelToday:b=>['kmCancelToday',b.session,b.id],
+  addMember:b=>['kmAddMember',b.session,b.name,b.cls],
+  cardIssued:b=>['kmMarkCardIssued',b.session,b.id]
+};
+function gasCall(action,body){
+  if(action==='ping')return Promise.resolve({ok:true,api:1,church:BOOT.church,dept:BOOT.dept,program:BOOT.program});
+  const a=GAS_FN[action](body);
+  return new Promise((ok,no)=>{google.script.run.withSuccessHandler(ok).withFailureHandler(()=>{net('bad');no(new Error('연결이 끊겼어요. 인터넷을 확인하고 다시 눌러 주세요.'));})[a[0]](...a.slice(1));});
+}
+function withTimeout(p,ms){return new Promise((ok,no)=>{const t=setTimeout(()=>{const e=new Error('timeout');e.timeout=true;no(e);},ms);p.then(v=>{clearTimeout(t);ok(v);},e=>{clearTimeout(t);no(e);});});}
+function jsonp(url,params){
+  return new Promise((resolve,reject)=>{
+    const cb='kmPass_'+Date.now()+'_'+Math.floor(Math.random()*1e5);
+    const s=document.createElement('script');
+    const timer=setTimeout(()=>done(new Error('교회 출석부 응답이 늦어요. 인터넷 연결을 확인해 주세요.')),20000);
+    function done(err,val){clearTimeout(timer);delete window[cb];s.remove();if(err){net('bad');reject(err);}else resolve(val);}
+    window[cb]=d=>done(null,d);
+    const q=new URLSearchParams(Object.assign({api:'1',callback:cb},params));
+    s.onerror=()=>done(new Error('교회 출석부에 연결할 수 없어요. 주소와 배포 설정(모든 사용자)을 확인해 주세요.'));
+    s.src=url+'?'+q.toString();
+    document.head.appendChild(s);
+  });
+}
+
+/* ---------- 연결 · PIN 화면 ---------- */
+let pin='';
+function gate(on){document.getElementById('gate').classList.toggle('on',on);}
+function showUrlStep(){gate(true);document.getElementById('stepUrl').style.display='';document.getElementById('stepPin').style.display='none';document.getElementById('urlIn').value=CONF.url||'';}
+function showPinStep(){gate(true);if(GAS)document.getElementById('changeUrl').hidden=true;pin='';dots();document.getElementById('stepUrl').style.display='none';document.getElementById('stepPin').style.display='';document.getElementById('gateChurch').textContent=(CONF.church||'우리교회')+' · '+(CONF.dept||'');}
+async function connectUrl(){
+  const err=document.getElementById('urlErr');err.textContent='';
+  const url=cleanUrl(document.getElementById('urlIn').value);
+  if(!url){err.textContent='script.google.com/macros/s/…/exec 형태의 주소를 넣어 주세요.';return;}
+  err.textContent='확인하는 중…';
+  try{
+    CONF.transport='';
+    const r=await api('ping',{}, {url});
+    if(!r||!r.ok||r.api!==1)throw new Error('꿈멤버 교회 스타터(v1.1 이상) 주소가 아니에요.');
+    CONF={url,church:r.church,dept:r.dept,program:r.program,transport:CONF.transport,session:''};saveConf();
+    err.textContent='';showPinStep();
+  }catch(e){err.textContent=e.message;}
+}
+function dots(){document.querySelectorAll('#dots i').forEach((d,i)=>d.classList.toggle('on',i<pin.length));}
+(function buildPad(){
+  const keys=['1','2','3','4','5','6','7','8','9','지움','0','확인'];
+  document.getElementById('pad').innerHTML=keys.map(k=>`<button data-k="${k}">${k}</button>`).join('');
+  document.getElementById('pad').addEventListener('click',e=>{const k=e.target.dataset&&e.target.dataset.k;if(!k)return;
+    if(k==='지움')pin=pin.slice(0,-1);else if(k==='확인')return login();else if(pin.length<6)pin+=k;dots();});
+})();
+async function login(){
+  const err=document.getElementById('pinErr');
+  if(pin.length<4){err.textContent='PIN 4자리 이상을 눌러 주세요.';return;}
+  err.textContent='확인하는 중…';
+  try{
+    const r=await api('login',{pin});pin='';dots();
+    if(!r.ok){err.textContent=r.error||'PIN이 맞지 않아요.';return;}
+    CONF.session=r.session;CONF.at=Date.now();saveConf();err.textContent='';gate(false);loadState(true);
+  }catch(e){err.textContent=e.message;pin='';dots();}
+}
+function lockNow(){CONF.session='';saveConf();closeModal('manage');showPinStep();}
+function forget(){if(GAS){lockNow();return;}if(!confirm('이 기기에서 교회 연결을 지울까요?\n(교회 출석부의 기록은 그대로 남아요)'))return;CONF={};saveConf();closeModal('manage');ST=null;render();showUrlStep();}
+
+/* ---------- 상태 ---------- */
+async function loadState(manual){
+  if(!CONF.url){showUrlStep();return;}
+  if(!CONF.session){showPinStep();return;}
+  if(busy&&!manual)return;
+  try{
+    const r=await api('state',{});
+    if(!r.ok){toast(r.error||'불러오기 실패');return;}
+    ST=r;render();
+    if(document.getElementById('manage').classList.contains('on'))renderManage();
+  }catch(e){toast(e.message);}
+}
+/* 우리교회 꿈멤버 PASS 등급 색 그대로 */
+const GRADE_LOOK=[{key:'lamb',color:'#E8936D',soft:'#FBEAE0'},{key:'light',color:'#E0A52A',soft:'#FAEFCB'},{key:'faith',color:'#5FA34E',soft:'#E2EFD7'},{key:'hope',color:'#5B9BD5',soft:'#E3F0FA'},{key:'love',color:'#E37AA0',soft:'#FBE2EC'}];
+function lookOf(level){const i=Math.max(0,(level&&level.order?level.order:1)-1);return GRADE_LOOK[i%GRADE_LOOK.length];}
+function levelIcon(level){return ICON[lookOf(level).key];}
+function soft(hex){const h=String(hex||'#F2C230').replace('#','');if(!/^[0-9a-fA-F]{6}$/.test(h))return '#FFF3BE';const n=parseInt(h,16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;const m=x=>Math.round(x+(255-x)*0.78);return `rgb(${m(r)},${m(g)},${m(b)})`;}
+function fmtDate(){const d=new Date();const w=['일','월','화','수','목','금','토'][d.getDay()];return (d.getMonth()+1)+'월 '+d.getDate()+'일 ('+w+')';}
+function render(){
+  document.getElementById('today').textContent=fmtDate();
+  const s=ST&&ST.settings||{};
+  document.getElementById('church').textContent=[s.church||CONF.church||'',s.dept||CONF.dept||''].filter(Boolean).join(' ');
+  document.getElementById('prog').textContent=(s.program||CONF.program||'꿈멤버')+' PASS';
+  document.getElementById('logo').textContent=String(s.church||CONF.church||'꿈').trim().charAt(0)||'꿈';
+  if(s.welcomeText)document.getElementById('heroTitle').textContent=s.welcomeText+' ✦';
+  const kids=ST?ST.members:[];
+  document.getElementById('cnt').textContent=kids.filter(k=>k.attendedToday).length;
+  document.getElementById('grid').innerHTML=!ST?'<div class="empty">교회 출석부에 연결해 주세요.</div>':kids.length?kids.map((k,i)=>`
+    <div class="kid ${k.attendedToday?'done':''}" onclick="tapKid(${i})">
+      <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+      <div class="face" style="background:${lookOf(k.level).soft}">${levelIcon(k.level)}</div>
+      <div class="nm">${esc(k.name)}</div><div class="gr">${esc(k.cls||'우리반')} · ${esc(k.level.name)}</div>
+      <div class="score">누적 ${k.points} XP</div></div>`).join('')
+    :'<div class="empty">아직 등록된 아이가 없어요.<br>‘관리 → 새 친구’에서 등록하거나 교회 스프레드시트 「아이명단」에 입력해 주세요 🐑</div>';
+}
+function tapKid(i){const k=ST&&ST.members[i];if(!k)return;
+  if(k.attendedToday){toast('🌸 '+k.name+' 친구는 오늘 이미 출석했어요!');return;}
+  record({id:k.id,code:'attendance'},k);}
+
+/* ---------- 출석 · 축하 ---------- */
+async function record(req,k){
+  if(celBusy||busy)return;
+  busy=true;toast((k?k.name+' ':'')+'출석을 기록하고 있어요…');
+  try{
+    const r=await api('record',Object.assign({requestId:rid(),device:'pass-kiosk'},req));
+    busy=false;
+    if(!r.ok){toast(r.duplicate?'🌸 '+(r.member?r.member.name:'')+' 친구는 오늘 이미 출석했어요!':(r.error||'기록 실패'));if(r.duplicate)loadState(true);return;}
+    const m=r.member;const idx=ST?ST.members.findIndex(x=>x.id===m.id):-1;
+    if(idx>=0)ST.members[idx]=m;else if(ST)ST.members.push(m);
+    render();
+    if(r.label==='출석'||req.code==='attendance')celebrate(m,r.points,r.levelUp);
+    else toast('✨ '+m.name+' '+r.label+' +'+r.points+' XP');
+    return r;
+  }catch(e){busy=false;toast(e.message);}
+}
+function celebrate(m,points,levelUp){
+  celBusy=true;document.getElementById('toast').classList.remove('show');
+  const lv=m.level,nx=m.next;
+  const cm=document.getElementById('celmascot');cm.style.background=lookOf(lv).soft;cm.innerHTML=levelIcon(lv);
+  document.getElementById('celname').textContent=m.name;
+  document.getElementById('celxp').textContent='+'+points+' XP';
+  document.getElementById('celgrade').textContent=lv.name+' · 누적 '+m.points+' XP';
+  document.getElementById('lvlup').innerHTML=levelUp?('<div class="levelup">⭐ '+esc(lv.name)+' 등급이 되었어요!</div>'):'';
+  document.getElementById('celsub').textContent=nx?('예수님과 함께 믿음이 한 뼘 자랐어요 · 다음 등급까지 '+(nx.min-m.points)+' XP'):'사랑을 나누는 사랑이가 되었어요! 💗';
+  const w=document.getElementById('celwelcome');
+  if(m.welcomeDue){w.innerHTML='🎁 오늘이 <b>'+m.attendance+'번째</b> 출석! 환영 가족카드를 전해 주세요.<br><button class="btn" onclick="cardGiven(\''+esc(m.id)+'\')">카드 전달 완료</button>';w.classList.add('on');}
+  else{w.classList.remove('on');w.innerHTML='';}
+  const f=document.getElementById('celfill');f.style.width='0%';f.style.background=lookOf(lv).color;
+  document.getElementById('cel').classList.add('on');
+  requestAnimationFrame(()=>{f.style.width=(m.progress||0)+'%';});
+  fireConfetti(lookOf(lv).color);chime();
+  clearTimeout(window._celT);window._celT=setTimeout(closeCel,m.welcomeDue?12000:3500);
+}
+function closeCel(){document.getElementById('cel').classList.remove('on');celBusy=false;clearTimeout(window._celT);}
+async function cardGiven(id){try{const r=await api('cardIssued',{id});toast(r.ok?'카드 전달을 기록했어요':r.error);closeCel();loadState(true);}catch(e){toast(e.message);}}
+
+/* ---------- 소리 잠금 해제 (태블릿은 첫 터치 뒤에만 소리가 나요) ---------- */
+let _ac=null;
+function audioCtx(){if(!_ac){_ac=new(window.AudioContext||window.webkitAudioContext)();}if(_ac.state==='suspended')_ac.resume();return _ac;}
+['pointerdown','touchstart','keydown'].forEach(ev=>document.addEventListener(ev,function unlock(){try{const a=audioCtx();const b=a.createBuffer(1,1,22050),s=a.createBufferSource();s.buffer=b;s.connect(a.destination);s.start(0);}catch(_){}},{once:true,passive:true}));
+/* 화면 꺼짐 방지 (지원 기기) */
+let _wake=null;async function keepAwake(){try{if('wakeLock' in navigator&&!_wake){_wake=await navigator.wakeLock.request('screen');_wake.addEventListener('release',()=>{_wake=null;});}}catch(_){}}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&scanning)keepAwake();});
+/* ---------- confetti ---------- */
+function fireConfetti(col){
+  const cv=document.getElementById('confetti'),ctx=cv.getContext('2d');
+  if(!ctx)return;
+  cv.width=innerWidth;cv.height=innerHeight;
+  const cols=[col,'#F6C638','#E37AA0','#5FA34E','#8A7BD8','#E8936D'];
+  let parts=[];for(let i=0;i<140;i++)parts.push({x:innerWidth/2,y:innerHeight*0.35,
+    vx:(Math.random()-.5)*16,vy:Math.random()*-15-4,g:.4+Math.random()*.3,
+    s:6+Math.random()*8,r:Math.random()*6.28,vr:(Math.random()-.5)*.4,c:cols[i%cols.length]});
+  let frame=0;
+  (function anim(){frame++;ctx.clearRect(0,0,cv.width,cv.height);
+    parts.forEach(p=>{p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;
+      ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*0.6);ctx.restore();});
+    if(frame<150&&document.getElementById('cel').classList.contains('on'))requestAnimationFrame(anim);
+    else ctx.clearRect(0,0,cv.width,cv.height);})();
+}
+/* ---------- sound ---------- */
+function chime(){try{
+  const a=audioCtx();
+  if(a.state==='suspended')a.resume();
+  const now=a.currentTime;
+  const master=a.createGain();master.gain.value=0.82;
+  const comp=a.createDynamicsCompressor();
+  comp.connect(a.destination);master.connect(comp);
+  /* 샤랄랄~ 반짝이는 잔향(에코) */
+  const delay=a.createDelay(0.6);delay.delayTime.value=0.17;
+  const fb=a.createGain();fb.gain.value=0.30;
+  const wet=a.createGain();wet.gain.value=0.34;
+  master.connect(delay);delay.connect(fb);fb.connect(delay);delay.connect(wet);wet.connect(comp);
+  function tone(freq,start,dur,type,vol){
+    const o=a.createOscillator(),g=a.createGain();
+    o.type=type;o.frequency.setValueAtTime(freq,start);
+    o.connect(g);g.connect(master);
+    g.gain.setValueAtTime(0.0008,start);
+    g.gain.linearRampToValueAtTime(vol,start+0.015);
+    g.gain.exponentialRampToValueAtTime(0.0008,start+dur);
+    o.start(start);o.stop(start+dur+0.02);
+  }
+  /* 뮤직박스/실로폰 종소리: 사인 + 옥타브 반짝임 (귀엽고 화려한 톤) */
+  function bell(freq,start,dur,vol){
+    tone(freq,start,dur,'sine',vol);
+    tone(freq*2,start,dur*0.7,'triangle',vol*0.34);
+    tone(freq*3,start,dur*0.4,'sine',vol*0.12);
+  }
+  /* 깜찍한 '뽁' 팝 — 노이즈 없이 음정만 통통 튀어 오름 */
+  function pop(start,baseHz,vol){
+    const o=a.createOscillator(),g=a.createGain();
+    o.type='sine';o.frequency.setValueAtTime(baseHz,start);
+    o.frequency.exponentialRampToValueAtTime(baseHz*3,start+0.09);
+    o.connect(g);g.connect(master);
+    g.gain.setValueAtTime(0.0001,start);
+    g.gain.linearRampToValueAtTime(vol,start+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,start+0.13);
+    o.start(start);o.stop(start+0.16);
+  }
+  /* 0) 마법봉 글리산도 — 도레미솔라 펜타토닉 빠른 상승 (✨화려한 시작✨) */
+  [1046.5,1174.7,1318.5,1568,1760,2093,2349,2637].forEach((f,i)=>bell(f,now+i*0.035,0.4,0.06));
+  /* 1) 통통 튀는 윈드업 아르페지오 (도미솔도↑) */
+  [523.25,659.25,783.99,1046.5].forEach((f,i)=>bell(f,now+i*0.085,0.5,0.17));
+  /* 2) 깜찍한 멜로디 + 반짝이는 최고음 */
+  bell(1318.5,now+0.40,0.55,0.15); bell(1567.98,now+0.52,0.6,0.15); bell(2093,now+0.66,0.9,0.19);
+  /* 3) 큐트 팝 두 방 (폭죽 대체) */
+  pop(now+0.30,520,0.14); pop(now+0.60,720,0.14);
+  /* 4) 별가루 반짝임 캐스케이드 */
+  [2093,2349,2637,3136,3520].forEach((f,i)=>bell(f,now+0.78+i*0.06,0.5,0.085));
+  /* 5) 마무리 화려한 종소리 화음 (도미솔도 + 옥타브 반짝임) */
+  [523.25,659.25,783.99,1046.5,1318.5].forEach(f=>bell(f,now+1.05,1.2,0.09));
+  /* 6) 요정 가루 트윙클 — 펜타토닉 고음 흩뿌리기 (잔잔히 반짝반짝) */
+  const penta=[2093,2349,2637,3136,3520,4186];
+  for(let i=0;i<7;i++){const f=penta[Math.floor(Math.random()*penta.length)];
+    bell(f,now+0.9+Math.random()*1.1,0.45,0.05);}
+}catch(e){}}
+
+/* ---------- 카메라 QR ---------- */
+let stream=null,scanning=false,_sc=null,_sx=null,_lastScan=0,_lastData='',_lastDataAt=0,detector=null;
+const SECURE=window.isSecureContext;
+if(!GAS&&!SECURE||!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia))document.getElementById('launchWarning').classList.add('on');
+document.getElementById('cambtn').addEventListener('click',toggleCam);
+async function toggleCam(){
+  const box=document.getElementById('cam');
+  if(scanning){stopCam();box.classList.remove('on');document.getElementById('cambtn').innerHTML='📷<span class="lbl"> 카메라 스캔</span>';return;}
+  try{
+    try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'user'},width:{ideal:1280},height:{ideal:720}}});}
+    catch(_){stream=await navigator.mediaDevices.getUserMedia({video:true});}
+    const v=document.getElementById('video');v.srcObject=stream;await v.play();
+    try{const tr=stream.getVideoTracks()[0];if(tr&&tr.getCapabilities){const cap=tr.getCapabilities();if(cap.focusMode&&cap.focusMode.includes('continuous'))await tr.applyConstraints({advanced:[{focusMode:'continuous'}]});}}catch(_){}
+    if(!window.jsQR&&'BarcodeDetector'in window){try{detector=new BarcodeDetector({formats:['qr_code']});}catch(_){}}
+    keepAwake();box.classList.add('on');document.getElementById('cambtn').innerHTML='⏹<span class="lbl"> 스캔 멈춤</span>';scanning=true;requestAnimationFrame(scanLoop);
+  }catch(e){toast(GAS?'이 화면에서는 카메라가 막혀 있어요. 이름을 누르거나 QR 스캐너 · 꿈멤버PASS 카메라 키오스크를 써 주세요.':'카메라를 열 수 없어요. 이름을 눌러 출석하거나 카메라 권한을 확인해 주세요.');box.classList.remove('on');}
+}
+function stopCam(){scanning=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}}
+async function scanLoop(ts){
+  if(!scanning)return;
+  const v=document.getElementById('video');
+  if(v.readyState===v.HAVE_ENOUGH_DATA&&v.videoWidth&&!celBusy&&!busy&&((ts||0)-_lastScan>90)){
+    _lastScan=ts||0;
+    let data='';
+    if(window.jsQR){
+      if(!_sc){_sc=document.createElement('canvas');_sx=_sc.getContext('2d',{willReadFrequently:true});}
+      const vw=v.videoWidth,vh=v.videoHeight,side=Math.floor(Math.min(vw,vh)*0.92),ox=Math.floor((vw-side)/2),oy=Math.floor((vh-side)/2);
+      _sc.width=side;_sc.height=side;_sx.drawImage(v,ox,oy,side,side,0,0,side,side);
+      const img=_sx.getImageData(0,0,side,side);const c=jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});
+      if(c&&c.data)data=c.data;
+    }else if(detector){try{const r=await detector.detect(v);if(r&&r[0])data=r[0].rawValue;}catch(_){}}
+    if(data)onScan(data);
+  }
+  requestAnimationFrame(scanLoop);
+}
+function onScan(data){
+  const now=Date.now();
+  if(data===_lastData&&now-_lastDataAt<5000)return;
+  _lastData=data;_lastDataAt=now;scanHit();
+  record({scan:data.slice(0,300),code:'attendance'},null);
+}
+function scanHit(){const w=document.getElementById('camwrap');if(w){w.classList.add('hit');setTimeout(()=>w.classList.remove('hit'),600);}try{navigator.vibrate&&navigator.vibrate(120);}catch(_){}}
+/* USB·블루투스 QR 스캐너(키보드처럼 입력되는 기기) */
+let kb='',kbAt=0;
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('gate').classList.contains('on'))return;
+  if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;
+  const now=Date.now();if(now-kbAt>120)kb='';kbAt=now;
+  if(e.key==='Enter'){if(kb.length>=6)onScan(kb);kb='';return;}
+  if(e.key.length===1)kb+=e.key;
+});
+
+/* ---------- 관리 ---------- */
+function openManage(){if(!ST){loadState(true);return;}tab('kids');document.getElementById('manage').classList.add('on');}
+function closeModal(id){document.getElementById(id).classList.remove('on');}
+function tab(name){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
+  ['kids','log','add','dev'].forEach(n=>document.getElementById('tab-'+n).style.display=n===name?'':'none');renderManage();}
+function renderManage(){
+  if(!ST)return;
+  document.getElementById('mlist').innerHTML=ST.members.map((k,i)=>`<div class="mrow">
+      <span class="mthumb" style="background:${lookOf(k.level).soft}">${levelIcon(k.level)}</span>
+      <b>${esc(k.name)}</b><span class="minfo">${esc(k.cls||'')} · ${esc(k.level.name)} ${k.points}XP · 출석 ${k.attendance}</span>
+      <div class="mrew">${k.attendedToday?`<button onclick="cancelToday(${i})">↩ 오늘 출석 취소</button>`:`<button onclick="tapKid(${i})">✔ 출석</button>`}
+      <button onclick="openReward(${i})">칭찬 점수</button></div></div>`).join('')||'<div class="foot">등록된 아이가 없어요.</div>';
+  document.getElementById('loglist').innerHTML=(ST.todayLog||[]).map(l=>`<div class="logrow ${l.cancelled||l.isCancel?'x':''}">
+      <span class="t">${esc(l.time)}</span><b>${esc(l.name)}</b><span>${esc(l.label)}</span><span class="p">${l.points>0?'+':''}${l.points}</span>
+      ${!l.cancelled&&!l.isCancel?`<button onclick="undo(this,'${esc(l.entryId)}')">취소</button>`:''}</div>`).join('')||'<div class="foot">오늘 기록이 아직 없어요.</div>';
+  document.getElementById('devinfo').innerHTML='연결된 교회: <b>'+esc(CONF.church||'')+' '+esc(CONF.dept||'')+'</b><br>통신 방식: '+(GAS?'교회 웹앱 안에서 바로 연결':CONF.transport==='jsonp'?'호환 모드(JSONP)':'기본(POST)')+' · 스타터 v'+esc(ST.version||'')+'<br>기록은 교회 구글 스프레드시트에만 저장돼요.';
+}
+async function cancelToday(i){const k=ST.members[i];if(!k)return;
+  if(!confirm(k.name+'의 오늘 출석을 취소할까요?'))return;
+  try{const r=await api('cancelToday',{id:k.id});toast(r.ok?k.name+'의 오늘 출석을 취소했어요':r.error);loadState(true);}catch(e){toast(e.message);}}
+async function undo(btn,entryId){
+  if(!btn.classList.contains('arm')){btn.classList.add('arm');btn.textContent='한 번 더';setTimeout(()=>{btn.classList.remove('arm');btn.textContent='취소';},3000);return;}
+  btn.disabled=true;
+  try{const r=await api('undo',{entryId});toast(r.ok?'기록을 취소했어요':r.error);loadState(true);}catch(e){toast(e.message);}
+}
+let rewardIdx=-1;
+function openReward(i){
+  const k=ST.members[i];if(!k)return;rewardIdx=i;
+  document.getElementById('rewardTitle').textContent=k.name+' 칭찬 점수';
+  const acts=(ST.activities||[]).map(a=>`<label class="reason-option"><input type="radio" name="rr" value="${esc(a.code)}" data-xp="${a.points}">${esc(a.name)} <small>+${a.points}</small></label>`).join('');
+  document.getElementById('reasonList').innerHTML=acts+'<label class="reason-option"><input type="radio" name="rr" value="custom">특별 칭찬 (직접 입력)</label>';
+  document.getElementById('rewardXp').value='';document.getElementById('rewardXp').disabled=true;document.getElementById('rewardNote').value='';
+  document.getElementById('rewardModal').classList.add('on');
+}
+document.getElementById('reasonList').addEventListener('change',e=>{
+  if(e.target&&e.target.name==='rr'){const xp=document.getElementById('rewardXp');const c=e.target.value==='custom';xp.disabled=!c;xp.value=c?'':(e.target.dataset.xp||'');if(c)xp.focus();}
+});
+async function saveReward(){
+  const k=ST&&ST.members[rewardIdx];const sel=document.querySelector('input[name="rr"]:checked');
+  if(!k)return;if(!sel){toast('점수를 주는 이유를 선택해 주세요');return;}
+  const req={id:k.id,code:sel.value,note:document.getElementById('rewardNote').value.trim()};
+  if(sel.value==='custom'){req.points=Number(document.getElementById('rewardXp').value||0);
+    if(!(req.points>=1&&req.points<=100)){toast('특별 칭찬은 1~100점으로 입력해 주세요');return;}
+    if(!req.note){toast('특별 칭찬 이유를 적어 주세요');return;}}
+  const r=await record(req,k);
+  if(r&&r.ok){closeModal('rewardModal');renderManage();}
+}
+async function addKid(){
+  const name=document.getElementById('m-name').value.trim(),cls=document.getElementById('m-cls').value.trim();
+  if(!name){toast('이름을 입력해 주세요');return;}
+  try{
+    const r=await api('addMember',{name,cls});
+    if(!r.ok){toast(r.error);return;}
+    ST=r.state;render();document.getElementById('m-name').value='';document.getElementById('m-cls').value='';
+    const k=ST.members.filter(m=>m.name===name).pop();
+    closeModal('manage');
+    if(k)record({id:k.id,code:'attendance'},k);
+  }catch(e){toast(e.message);}
+}
+
+/* ---------- 시작 ---------- */
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2600);}
+render();
+/* 교회별 시작 링크: …/?u=웹앱주소(또는 배포ID) 로 열면 주소 입력을 건너뛰어요 */
+(function(){try{const q=new URLSearchParams(location.search).get('u');if(!q||GAS)return;
+  const full=/^AKfy[A-Za-z0-9_-]{20,}$/.test(q)?'https://script.google.com/macros/s/'+q+'/exec':q;
+  const url=cleanUrl(full);if(url&&url!==CONF.url){CONF={};saveConf();setTimeout(()=>{document.getElementById('urlIn').value=url;connectUrl();},50);}
+  history.replaceState(null,'',location.pathname);}catch(_){}})();
+if(!CONF.url)showUrlStep();else if(!CONF.session)showPinStep();else loadState(true);
+setInterval(()=>{if(!celBusy&&!busy&&CONF.session&&!document.hidden)loadState(false);},30000);
+</script>
+</body>
+</html>

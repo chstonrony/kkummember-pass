@@ -255,7 +255,7 @@
   <div id="tab-add" style="display:none">
     <div class="foot" style="text-align:left">처음 온 친구를 바로 등록해요. 보호자 연락처 등은 교회 스프레드시트에서만 관리해 주세요.</div>
     <div class="row" style="margin-top:10px"><input id="m-name" placeholder="이름" maxlength="20"><input id="m-cls" placeholder="반 (선택)" maxlength="20"></div>
-    <button class="btn dark" onclick="addKid()">등록하고 출석하기</button>
+    <button class="btn dark" id="addBtn" onclick="addKid()">등록하고 출석하기</button>
   </div>
   <div id="tab-dev" style="display:none">
     <div class="foot" style="text-align:left;line-height:1.7" id="devinfo"></div>
@@ -435,20 +435,48 @@ function tapKid(i){const k=ST&&ST.members[i];if(!k)return;
   record({id:k.id,code:'attendance'},k);}
 
 /* ---------- 출석 · 축하 ---------- */
+/* ---------- 빠른 출석: 화면에 먼저 축하, 기록은 뒤에서 저장 ---------- */
+function replaceMember(m){if(!ST||!m)return;const i=ST.members.findIndex(x=>x.id===m.id);if(i>=0)ST.members[i]=m;else ST.members.push(m);}
+function predictAttend(k){
+  const pts=Number(ST.settings&&ST.settings.attendancePoints)||10,levels=ST.levels||[];
+  const lvOf=p=>{let c=levels[0];for(const l of levels)if(p>=l.min)c=l;return c;};
+  const after=(k.points||0)+pts,lv=lvOf(after),nx=levels.find(l=>after<l.min)||null,span=nx?Math.max(1,nx.min-lv.min):1;
+  const m=Object.assign({},k,{points:after,attendance:(k.attendance||0)+1,level:lv,next:nx,attendedToday:true,
+    progress:nx?Math.max(0,Math.min(100,Math.round((after-lv.min)/span*100))):100});
+  m.welcomeDue=!k.cardIssued&&m.attendance>=(Number(ST.settings&&ST.settings.welcomeWeeks)||3);
+  return {m,pts,levelUp:lvOf(k.points||0).order!==lv.order};
+}
+function localMatch(data){
+  if(!ST)return null;
+  const raw=String(data||'').trim();
+  const tok=(raw.match(/[?&]h=([A-Za-z0-9]+)/)||[])[1]||raw.replace(/[^A-Za-z0-9]/g,'');
+  if(tok.length>=16&&tok.length<=40){const m=ST.members.find(x=>x.tag&&tok.indexOf(x.tag)===0);if(m)return m;}
+  const up=raw.toUpperCase();
+  return ST.members.find(x=>{const id=String(x.id).toUpperCase();return id.length>=4&&(up===id||new RegExp('(^|[^A-Z0-9])'+id.replace(/[^A-Z0-9]/g,'\\$&')+'($|[^A-Z0-9])').test(up));})||null;
+}
 async function record(req,k){
   if(celBusy||busy)return;
-  busy=true;toast((k?k.name+' ':'')+'출석을 기록하고 있어요…');
+  const isAtt=req.code==='attendance';
+  if(isAtt&&!k&&req.scan)k=localMatch(req.scan);
+  if(isAtt&&k&&k.attendedToday){toast('🌸 '+k.name+' 친구는 오늘 이미 출석했어요!');return;}
+  busy=true;
+  let fast=false,prev=null;
+  if(isAtt&&k&&ST&&ST.levels&&ST.levels.length){const p=predictAttend(k);prev=k;fast=true;replaceMember(p.m);render();celebrate(p.m,p.pts,p.levelUp);}
+  else toast((k?k.name+' ':'')+(isAtt?'출석을 기록하고 있어요…':'기록하고 있어요…'));
   try{
     const r=await api('record',Object.assign({requestId:rid(),device:'pass-kiosk'},req));
     busy=false;
-    if(!r.ok){toast(r.duplicate?'🌸 '+(r.member?r.member.name:'')+' 친구는 오늘 이미 출석했어요!':(r.error||'기록 실패'));if(r.duplicate)loadState(true);return;}
-    const m=r.member;const idx=ST?ST.members.findIndex(x=>x.id===m.id):-1;
-    if(idx>=0)ST.members[idx]=m;else if(ST)ST.members.push(m);
-    render();
-    if(r.label==='출석'||req.code==='attendance')celebrate(m,r.points,r.levelUp);
-    else toast('✨ '+m.name+' '+r.label+' +'+r.points+' XP');
+    if(!r.ok){
+      if(fast){replaceMember(r.duplicate&&r.member?r.member:prev);render();closeCel();}
+      toast(r.duplicate?'🌸 '+(r.member?r.member.name:(k?k.name:''))+' 친구는 오늘 이미 출석했어요!':(r.error||'기록 실패')+(fast?' · 다시 찍어 주세요':''));
+      if(r.duplicate)loadState(true);return;
+    }
+    replaceMember(r.member);render();
+    if(fast){if(r.member.welcomeDue&&document.getElementById('cel').classList.contains('on'))showWelcome(r.member);}
+    else if(r.label==='출석'||isAtt)celebrate(r.member,r.points,r.levelUp);
+    else toast('✨ '+r.member.name+' '+r.label+' +'+r.points+' XP');
     return r;
-  }catch(e){busy=false;toast(e.message);}
+  }catch(e){busy=false;if(fast){replaceMember(prev);render();closeCel();}toast(e.message+(fast?' · 다시 찍어 주세요':''));}
 }
 function celebrate(m,points,levelUp){
   celBusy=true;document.getElementById('toast').classList.remove('show');
@@ -459,14 +487,18 @@ function celebrate(m,points,levelUp){
   document.getElementById('celgrade').textContent=lv.name+' · 누적 '+m.points+' XP';
   document.getElementById('lvlup').innerHTML=levelUp?('<div class="levelup">⭐ '+esc(lv.name)+' 등급이 되었어요!</div>'):'';
   document.getElementById('celsub').textContent=nx?('예수님과 함께 믿음이 한 뼘 자랐어요 · 다음 등급까지 '+(nx.min-m.points)+' XP'):'사랑을 나누는 사랑이가 되었어요! 💗';
-  const w=document.getElementById('celwelcome');
-  if(m.welcomeDue){w.innerHTML='🎁 오늘이 <b>'+m.attendance+'번째</b> 출석! 환영 가족카드를 전해 주세요.<br><button class="btn" onclick="cardGiven(\''+esc(m.id)+'\')">카드 전달 완료</button>';w.classList.add('on');}
-  else{w.classList.remove('on');w.innerHTML='';}
+  showWelcome(m);
   const f=document.getElementById('celfill');f.style.width='0%';f.style.background=lookOf(lv).color;
   document.getElementById('cel').classList.add('on');
   requestAnimationFrame(()=>{f.style.width=(m.progress||0)+'%';});
   fireConfetti(lookOf(lv).color);chime();
   clearTimeout(window._celT);window._celT=setTimeout(closeCel,m.welcomeDue?12000:3500);
+}
+function showWelcome(m){
+  const w=document.getElementById('celwelcome');
+  if(m.welcomeDue){w.innerHTML='🎁 오늘이 <b>'+m.attendance+'번째</b> 출석! 환영 가족카드를 전해 주세요.<br><button class="btn" onclick="cardGiven(\''+esc(m.id)+'\')">카드 전달 완료</button>';w.classList.add('on');}
+  else{w.classList.remove('on');w.innerHTML='';}
+  if(m.welcomeDue){clearTimeout(window._celT);window._celT=setTimeout(closeCel,12000);}
 }
 function closeCel(){document.getElementById('cel').classList.remove('on');celBusy=false;clearTimeout(window._celT);}
 async function cardGiven(id){try{const r=await api('cardIssued',{id});toast(r.ok?'카드 전달을 기록했어요':r.error);closeCel();loadState(true);}catch(e){toast(e.message);}}
@@ -565,7 +597,7 @@ async function toggleCam(){
     catch(_){stream=await navigator.mediaDevices.getUserMedia({video:true});}
     const v=document.getElementById('video');v.srcObject=stream;await v.play();
     try{const tr=stream.getVideoTracks()[0];if(tr&&tr.getCapabilities){const cap=tr.getCapabilities();if(cap.focusMode&&cap.focusMode.includes('continuous'))await tr.applyConstraints({advanced:[{focusMode:'continuous'}]});}}catch(_){}
-    if(!window.jsQR&&'BarcodeDetector'in window){try{detector=new BarcodeDetector({formats:['qr_code']});}catch(_){}}
+    if(!detector&&'BarcodeDetector'in window){try{const f=await BarcodeDetector.getSupportedFormats();if(f.includes('qr_code'))detector=new BarcodeDetector({formats:['qr_code']});}catch(_){detector=null;}}
     keepAwake();box.classList.add('on');document.getElementById('cambtn').innerHTML='⏹<span class="lbl"> 스캔 멈춤</span>';scanning=true;requestAnimationFrame(scanLoop);
   }catch(e){toast(GAS?'이 화면에서는 카메라가 막혀 있어요. 이름을 누르거나 QR 스캐너 · 꿈멤버PASS 카메라 키오스크를 써 주세요.':'카메라를 열 수 없어요. 이름을 눌러 출석하거나 카메라 권한을 확인해 주세요.');box.classList.remove('on');}
 }
@@ -576,13 +608,15 @@ async function scanLoop(ts){
   if(v.readyState===v.HAVE_ENOUGH_DATA&&v.videoWidth&&!celBusy&&!busy&&((ts||0)-_lastScan>90)){
     _lastScan=ts||0;
     let data='';
-    if(window.jsQR){
+    if(detector){try{const r=await detector.detect(v);if(r&&r[0])data=r[0].rawValue;}catch(_){detector=null;}}
+    else if(window.jsQR){
       if(!_sc){_sc=document.createElement('canvas');_sx=_sc.getContext('2d',{willReadFrequently:true});}
       const vw=v.videoWidth,vh=v.videoHeight,side=Math.floor(Math.min(vw,vh)*0.92),ox=Math.floor((vw-side)/2),oy=Math.floor((vh-side)/2);
-      _sc.width=side;_sc.height=side;_sx.drawImage(v,ox,oy,side,side,0,0,side,side);
-      const img=_sx.getImageData(0,0,side,side);const c=jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});
+      const S=Math.min(side,640);
+      _sc.width=S;_sc.height=S;_sx.drawImage(v,ox,oy,side,side,0,0,S,S);
+      const img=_sx.getImageData(0,0,S,S);const c=jsQR(img.data,S,S,{inversionAttempts:'dontInvert'});
       if(c&&c.data)data=c.data;
-    }else if(detector){try{const r=await detector.detect(v);if(r&&r[0])data=r[0].rawValue;}catch(_){}}
+    }
     if(data)onScan(data);
   }
   requestAnimationFrame(scanLoop);
@@ -651,9 +685,15 @@ async function saveReward(){
   const r=await record(req,k);
   if(r&&r.ok){closeModal('rewardModal');renderManage();}
 }
+let addBusy=false,dupAsk='';
 async function addKid(){
+  if(addBusy)return;
   const name=document.getElementById('m-name').value.trim(),cls=document.getElementById('m-cls').value.trim();
   if(!name){toast('이름을 입력해 주세요');return;}
+  const same=(ST&&ST.members||[]).some(m=>m.name===name&&(!cls||m.cls===cls));
+  if(same&&dupAsk!==name+'|'+cls){dupAsk=name+'|'+cls;toast('같은 이름의 친구가 이미 있어요. 그래도 등록하려면 한 번 더 눌러 주세요');setTimeout(()=>{dupAsk='';},6000);return;}
+  dupAsk='';addBusy=true;
+  const btn=document.getElementById('addBtn');if(btn){btn.disabled=true;btn.textContent='등록하는 중…';}
   try{
     const r=await api('addMember',{name,cls});
     if(!r.ok){toast(r.error);return;}
@@ -662,6 +702,7 @@ async function addKid(){
     closeModal('manage');
     if(k)record({id:k.id,code:'attendance'},k);
   }catch(e){toast(e.message);}
+  finally{addBusy=false;if(btn){btn.disabled=false;btn.textContent='등록하고 출석하기';}}
 }
 
 /* ---------- 시작 ---------- */
